@@ -69,8 +69,8 @@ node {
   
   stage('Switch over to new Version') {
     input "Switch Production?"
-    sh 'oc patch route dashboard -p \'{"spec":{"to":{"name":"' + dest + '"}}}\''
-    sh 'oc get route dashboard > oc_out.txt'
+    sh 'oc patch route -n ' + project + ' dashboard -p \'{"spec":{"to":{"name":"' + dest + '"}}}\''
+    sh 'oc get route -n ' + project + ' dashboard > oc_out.txt'
     oc_out = readFile('oc_out.txt')
     echo "Current dashboard configuration: " + oc_out
   }
