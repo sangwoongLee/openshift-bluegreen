@@ -64,7 +64,7 @@ node {
   
   stage('Testing new Version') {
     openshiftVerifyDeployment depCfg: dest, namespace: project, replicaCount: '1', verbose: 'false', verifyReplicaCount: 'true', waitTime: '', waitUnit: 'sec'
-    openshiftVerifyService namespace: project, svcName: dest, verbose: 'false'
+    //openshiftVerifyService namespace: project, svcName: dest, verbose: 'false'
   }
   
   stage('Switch over to new Version') {
