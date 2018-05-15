@@ -56,8 +56,8 @@ node {
     def dockerRepo = "docker-registry.default.svc:5000/" + project
     def destDockerImage = dockerRepo + "/" + selectedImageTag
     
-    sh 'oc patch dc '+ dest +' -p \'{"spec":{"template" : {"spec": {"containers":[{"image":"temp:latest"} ]}}}}\''
-    sh 'oc patch dc '+ dest +' -p \'{"spec":{"template" : {"spec": {"containers":[{"image":"' + destDockerImage + '"} ]}}}}\''
+    sh 'oc patch dc -n ' + project +' '+ dest +' -p \'{"spec":{"template" : {"spec": {"containers":[{"image":"temp:latest"} ]}}}}\''
+    sh 'oc patch dc -n ' + project +' '+ dest +' -p \'{"spec":{"template" : {"spec": {"containers":[{"image":"' + destDockerImage + '"} ]}}}}\''
     
     openshiftDeploy depCfg: dest, namespace: project, verbose: 'true', waitTime: '', waitUnit: 'sec'
   }
@@ -69,9 +69,9 @@ node {
   
   stage('Switch over to new Version') {
     input "Switch Production?"
-    sh 'oc patch route example -p \'{"spec":{"to":{"name":"' + dest + '"}}}\''
-    sh 'oc get route example > oc_out.txt'
+    sh 'oc patch route dashboard -p \'{"spec":{"to":{"name":"' + dest + '"}}}\''
+    sh 'oc get route dashboard > oc_out.txt'
     oc_out = readFile('oc_out.txt')
-    echo "Current route configuration: " + oc_out
+    echo "Current dashboard configuration: " + oc_out
   }
 }
