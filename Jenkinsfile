@@ -56,8 +56,8 @@ node {
     def dockerRepo = "docker-registry.default.svc:5000/" + project
     def destDockerImage = dockerRepo + "/" + selectedImageTag
     
-    sh 'oc patch dc -n ' + project +' '+ dest +' -p \'{"spec":{"template" : {"spec": {"containers":[{"image":"temp:latest"} ]}}}}\''
-    sh 'oc patch dc -n ' + project +' '+ dest +' -p \'{"spec":{"template" : {"spec": {"containers":[{"image":"' + destDockerImage + '"} ]}}}}\''
+    sh 'oc patch dc -n ' + project +' '+ dest +' -p \'{"spec":{"template" : {"spec": {"containers":[{"name":"dashboard", "image":"temp:latest"} ]}}}}\''
+    sh 'oc patch dc -n ' + project +' '+ dest +' -p \'{"spec":{"template" : {"spec": {"containers":[{"name":"dashboard", "image":"' + destDockerImage + '"} ]}}}}\''
     
     openshiftDeploy depCfg: dest, namespace: project, verbose: 'true', waitTime: '', waitUnit: 'sec'
   }
