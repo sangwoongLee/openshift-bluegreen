@@ -1,80 +1,72 @@
 import java.text.SimpleDateFormat;
 
-// This pipeline expects a paramater newcolor which will set the newcolor of the newly deployed application.
+def funCreateImageTag(selector, namespaces){
+    
+    sh "oc get istag -l='${selector}' -n ${namespaces} -o json > result.json"
+    def myJson = readFile('result.json');
+    def myObject = readJSON text: myJson;
+    def items = myObject.items
+    def choices = ""
+    
+    items.each { item ->
+        choices += "${item.metadata.name}\n"
+    }    
+    return choices
+}
+
+def selectedImageTag = "";
 
 node {
   // Blue/Green Deployment into Production
   // -------------------------------------
-  def project  = ""
+  def project  = "prd-sample-dashboard"
   def dest     = "example-green"
   def active   = ""
-  def newcolor = ""
-
-  switch (BUILD_NUMBER.toInteger() % 10) {
-    case 1:
-        newcolor="red"
-        break
-    case 2:
-        newcolor="maroon"
-        break
-    case 3:
-        newcolor="yellow"
-        break
-    case 4:
-        newcolor="magenta"
-        break
-    case 5:
-        newcolor="purple"
-        break
-    case 6:
-        newcolor="orange"
-        break
-    case 7:
-        newcolor="cyan"
-        break
-    case 8:
-        newcolor="navy"
-        break
-    case 9:
-        newcolor="green"
-        break
-    case 0:
-        newcolor="blue"
-        break
-  }
 
   stage('Determine Deployment color') {
-    // Determine current project
-    sh "oc get project|grep -v NAME|awk '{print \$1}' >project.txt"
-    project = readFile('project.txt').trim()
-    sh "oc get route example -n ${project} -o jsonpath='{ .spec.to.name }' > activesvc.txt"
+
+    sh "oc get route dashboard -n ${project} -o jsonpath='{ .spec.to.name }' > activesvc.txt"
 
     // Determine currently active Service
     active = readFile('activesvc.txt').trim()
-    if (active == "example-green") {
-      dest = "example-blue"
+    if (active == "dashboard-green") {
+      dest = "dashboard-blue"
     }
     echo "Active svc: " + active
     echo "Dest svc:   " + dest
-    echo "New color:  " + newcolor
   }
 
-  stage('Build new version') {
-    // Building in this case means simply changing the environment
-    // variable newcolor in the deployment configuration.
-    // There is not Build Configuration since this is a straight
-    // up Docker Image deployment.
-    echo "Building ${dest}"
-    sh "oc set env dc ${dest} COLOR=${newcolor}"
+  stage('Select new version') {
+        
+    script {
+          def choices = funCreateImageTag("app=sample-dashboard", "prd-sample-dashboard")
+          env.userInput = input(id: 'userInput', message: 'Select Image?',
+              parameters: [[$class: 'ChoiceParameterDefinition', defaultValue: 'strDef', 
+              description:'Select-Promotion-Image', name:'selectedImage', choices: choices]
+          ])
+
+          selectedImageTag = "${env.userInput}"
+          echo "selectedImage: "+ selectedImageTag
+    }
   }
 
   stage('Deploy new Version') {
     echo "Deploying to ${dest}"
-
-    openshiftDeploy depCfg: dest, namespace: project, verbose: 'false', waitTime: '', waitUnit: 'sec'
+   
+    def dockerRepo = "docker-registry.default.svc:5000/" + project
+    def destDockerImage = dockerRepo + "/" + selectedImageTag
+    
+    sh 'oc patch bc promotion-prd-sample-dashboard -p \'{"spec":{"template" : {"spec": {"containers":[{"image":"temp:latest"} ]}}}}\''
+    sh 'oc patch bc promotion-prd-sample-dashboard -p \'{"spec":{"template" : {"spec": {"containers":[{"image":"' + destDockerImage + '"} ]}}}}\''
+    
+    openshiftDeploy depCfg: dest, namespace: project, verbose: 'true', waitTime: '', waitUnit: 'sec'
+  }
+  
+  stage('Testing new Version') {
     openshiftVerifyDeployment depCfg: dest, namespace: project, replicaCount: '1', verbose: 'false', verifyReplicaCount: 'true', waitTime: '', waitUnit: 'sec'
     openshiftVerifyService namespace: project, svcName: dest, verbose: 'false'
   }
+  
   stage('Switch over to new Version') {
     input "Switch Production?"
     sh 'oc patch route example -p \'{"spec":{"to":{"name":"' + dest + '"}}}\''
