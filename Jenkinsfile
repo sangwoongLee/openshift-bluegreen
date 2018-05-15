@@ -20,7 +20,7 @@ node {
   // Blue/Green Deployment into Production
   // -------------------------------------
   def project  = "prd-sample-dashboard"
-  def dest     = "example-green"
+  def dest     = "dashboard-green"
   def active   = ""
 
   stage('Determine Deployment color') {
@@ -56,8 +56,8 @@ node {
     def dockerRepo = "docker-registry.default.svc:5000/" + project
     def destDockerImage = dockerRepo + "/" + selectedImageTag
     
-    sh 'oc patch bc promotion-prd-sample-dashboard -p \'{"spec":{"template" : {"spec": {"containers":[{"image":"temp:latest"} ]}}}}\''
-    sh 'oc patch bc promotion-prd-sample-dashboard -p \'{"spec":{"template" : {"spec": {"containers":[{"image":"' + destDockerImage + '"} ]}}}}\''
+    sh 'oc patch dc '+ dest +' -p \'{"spec":{"template" : {"spec": {"containers":[{"image":"temp:latest"} ]}}}}\''
+    sh 'oc patch dc '+ dest +' -p \'{"spec":{"template" : {"spec": {"containers":[{"image":"' + destDockerImage + '"} ]}}}}\''
     
     openshiftDeploy depCfg: dest, namespace: project, verbose: 'true', waitTime: '', waitUnit: 'sec'
   }
